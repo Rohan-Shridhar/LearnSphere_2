@@ -4,48 +4,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Atomic Structure & Periodic Trends - LearnSphere</title>
+  <meta name="description" content="Interactive Atomic Structure and Periodic Trends learning module with theory, animation, formulas, quizzes, and activities." />
+
+  <title>Atomic Structure & Periodic Trends | LearnSphere</title>
+
+  <!-- External CSS -->
   <link rel="stylesheet" href="atomic.css" />
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body onload="loadTheme()">
-  <div class="container">
-    <h1>Atomic Structure & Periodic Trends</h1>
 
-    <div class="canvas-container" id="contentContainer">
-      <canvas id="atomCanvas" width="600" height="400"></canvas>
-    </div>
+  <main class="container">
 
-    <div class="button">
-      <button class="button" onclick="startSimulation()">Start Simulation</button>
-      <button class="button" onclick="resetCanvas()">Reset</button>
-    </div>
+    <!-- Header Section -->
+    <header class="page-header">
+      <h1>⚛️ Atomic Structure & Periodic Trends</h1>
+      <p class="subtitle">
+        Explore atomic models, periodic properties, formulas, animations,
+        quizzes, and interactive chemistry activities.
+      </p>
+    </header>
 
-    <div class="button-grid">
-      <button class="button" onclick="loadTheory()">📖 Theory</button>
-      <button class="button" onclick="loadAnimation()">🎞️ Animation</button>
-      <button class="button" onclick="loadFormulas()">✏️ Formulas</button>
-      <button class="button" onclick="loadRealLifeExample()">🌍 Real Life</button>
-      <button class="button" onclick="loadInteractive()">🎮 Interactive</button>
-      <a href="../chemistryquiz/atomic_structurequiz.html" class="button" target="_blank">🎮 Quiz</a>
-      <button class="button" onclick="openFeedbackForm()">📝 Feedback</button>
-      <a href="../home.html" class="button">🏠 Home</a>
-    </div>
+    <!-- Simulation Section -->
+    <section class="simulation-section">
+      <div class="canvas-container" id="contentContainer">
+        <canvas id="atomCanvas" width="600" height="400">
+          Your browser does not support the HTML5 Canvas element.
+        </canvas>
+      </div>
+
+      <!-- Main Controls -->
+      <div class="control-buttons">
+        <button class="button primary-btn" onclick="startSimulation()">
+          ▶ Start Simulation
+        </button>
+
+        <button class="button secondary-btn" onclick="resetCanvas()">
+          🔄 Reset
+        </button>
+      </div>
+    </section>
+
+    <!-- Learning Resources -->
+    <section class="resource-section">
+      <h2>Learning Resources</h2>
+
+      <div class="button-grid">
+
+        <button class="button" onclick="loadTheory()">
+          📖 Theory
+        </button>
+
+        <button class="button" onclick="loadAnimation()">
+          🎞️ Animation
+        </button>
+
+        <button class="button" onclick="loadFormulas()">
+          ✏️ Formulas
+        </button>
+
+        <button class="button" onclick="loadRealLifeExample()">
+          🌍 Real Life Applications
+        </button>
+
+        <button class="button" onclick="loadInteractive()">
+          🎮 Interactive Activity
+        </button>
+
+        <a href="../chemistryquiz/atomic_structurequiz.html"
+           class="button"
+           target="_blank"
+           rel="noopener noreferrer">
+          🧠 Quiz
+        </a>
+
+        <button class="button" onclick="openFeedbackForm()">
+          📝 Feedback
+        </button>
+
+        <a href="../home.html" class="button home-btn">
+          🏠 Home
+        </a>
+
+      </div>
+    </section>
 
     <!-- Feedback Popup -->
-    <div id="feedbackPopup" class="feedback-popup hidden">
-      <h2>📝 Your Feedback</h2>
-      <p>Let us know what you think about the Probability & Statistics module!</p>
-      <textarea id="feedbackInput" placeholder="Type your feedback here..." rows="4"></textarea>
-      <button class="button" onclick="submitFeedback()">Submit</button>
-      <button class="button close-button" onclick="closeFeedbackForm()">❌ Close</button>
-    </div>
-  </div>
+    <section id="feedbackPopup" class="feedback-popup hidden">
+      <div class="feedback-card">
 
-  <button class="button back-button" id="backButton" onclick="restoreCanvas()">⬅️ Back to Simulation</button>
-  </div>
+        <h2>📝 Share Your Feedback</h2>
 
+        <p>
+          Let us know how we can improve the Atomic Structure & Periodic Trends module.
+        </p>
+
+        <textarea
+          id="feedbackInput"
+          placeholder="Type your feedback here..."
+          rows="5"
+          aria-label="Feedback Input">
+        </textarea>
+
+        <div class="feedback-buttons">
+          <button class="button submit-btn" onclick="submitFeedback()">
+            ✅ Submit
+          </button>
+
+          <button class="button close-button" onclick="closeFeedbackForm()">
+            ❌ Close
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Back Button -->
+  <button
+    class="button back-button"
+    id="backButton"
+    onclick="restoreCanvas()">
+    ⬅ Back to Simulation
+  </button>
+
+  <!-- External JavaScript -->
   <script src="atomic.js"></script>
+
 </body>
 
 </html>

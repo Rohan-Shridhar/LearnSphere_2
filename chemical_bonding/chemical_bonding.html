@@ -2,45 +2,196 @@
 <html lang="en">
 
 <head>
+  <!-- Meta Information -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chemical Bonding & Molecular Geometry - LearnSphere</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO -->
+  <meta name="description"
+    content="Interactive learning module for Chemical Bonding and Molecular Geometry with theory, animations, molecular shapes, simulations, and quizzes." />
+
+  <title>
+    Chemical Bonding & Molecular Geometry | LearnSphere
+  </title>
+
+  <!-- CSS -->
   <link rel="stylesheet" href="chemical_bonding.css" />
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
 </head>
 
 <body onload="loadTheme()">
-  <button class="dark-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
 
-  <div class="container">
-    <h1 class="title">Chemical Bonding & Molecular Geometry</h1>
+  <!-- Dark Mode Toggle -->
+  <button
+    class="dark-toggle"
+    onclick="toggleDarkMode()"
+    aria-label="Toggle Dark Mode">
 
-    <div class="iframe-container" id="contentContainer">
-      <p>Welcome! Use the buttons below to explore the topic.</p>
-      <canvas id="moleculeCanvas" width="500" height="500"></canvas>
-    </div>
+    🌙 Dark Mode
+  </button>
 
-    <div class="button-grid">
-      <button class="button" onclick="loadTheory()">📖 Theory</button>
-      <button class="button" onclick="loadAnimation()">🎞️ Animation</button>
-      <button class="button" onclick="loadFormulas()">✏️ Molecular Shapes</button>
-      <button class="button" onclick="loadRealLifeExample()">🌍 Real-Life Example</button>
-      <button class="button" onclick="loadInteractive()">🎮 Interactive</button>
-      <a href="../chemistryquiz/chemical_bondingquiz.html" class="button" target="_blank">🎮 Quiz</a>
-      <button class="button" onclick="openFeedbackForm()">📝 Feedback</button>
-      <a href="../home.html" class="button">🏠 Home</a>
-    </div>
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Header -->
+    <header class="page-header">
+
+      <h1 class="title">
+        ⚛️ Chemical Bonding & Molecular Geometry
+      </h1>
+
+      <p class="subtitle">
+        Explore chemical bonds, molecular structures, geometry,
+        animations, theory, and interactive simulations.
+      </p>
+
+    </header>
+
+    <!-- Dynamic Content Section -->
+    <section class="simulation-section">
+
+      <div class="iframe-container" id="contentContainer">
+
+        <!-- Welcome Message -->
+        <div class="welcome-message">
+
+          <h2>Welcome to LearnSphere Chemistry</h2>
+
+          <p>
+            Use the learning tools below to explore chemical bonding
+            and molecular geometry concepts interactively.
+          </p>
+
+        </div>
+
+        <!-- Canvas -->
+        <canvas
+          id="moleculeCanvas"
+          width="500"
+          height="500">
+
+          Your browser does not support HTML5 Canvas.
+        </canvas>
+
+      </div>
+
+    </section>
+
+    <!-- Learning Resources -->
+    <section class="resource-section">
+
+      <h2>Learning Resources</h2>
+
+      <div class="button-grid">
+
+        <button class="button"
+          onclick="loadTheory()">
+
+          📖 Theory
+        </button>
+
+        <button class="button"
+          onclick="loadAnimation()">
+
+          🎞️ Animation
+        </button>
+
+        <button class="button"
+          onclick="loadFormulas()">
+
+          ✏️ Molecular Shapes
+        </button>
+
+        <button class="button"
+          onclick="loadRealLifeExample()">
+
+          🌍 Real-Life Example
+        </button>
+
+        <button class="button"
+          onclick="loadInteractive()">
+
+          🎮 Interactive Activity
+        </button>
+
+        <!-- Quiz -->
+        <a href="../chemistryquiz/chemical_bondingquiz.html"
+          class="button"
+          target="_blank"
+          rel="noopener noreferrer">
+
+          🧠 Quiz
+        </a>
+
+        <!-- Feedback -->
+        <button class="button"
+          onclick="openFeedbackForm()">
+
+          📝 Feedback
+        </button>
+
+        <!-- Home -->
+        <a href="../home.html"
+          class="button home-btn">
+
+          🏠 Home
+        </a>
+
+      </div>
+
+    </section>
 
     <!-- Feedback Popup -->
-    <div id="feedbackPopup" class="feedback-popup hidden">
-      <h2>📝 Your Feedback</h2>
-      <p>Let us know what you think about this topic!</p>
-      <textarea id="feedbackInput" placeholder="Type your feedback here..." rows="4"></textarea>
-      <button class="button" onclick="submitFeedback()">Submit</button>
-      <button class="button close-button" onclick="closeFeedbackForm()">❌ Close</button>
-    </div>
-  </div>
+    <section id="feedbackPopup"
+      class="feedback-popup hidden">
 
+      <div class="feedback-card">
+
+        <h2>📝 Share Your Feedback</h2>
+
+        <p>
+          Let us know how we can improve this chemistry module.
+        </p>
+
+        <textarea
+          id="feedbackInput"
+          placeholder="Type your feedback here..."
+          rows="5"
+          aria-label="Feedback Input">
+        </textarea>
+
+        <div class="feedback-buttons">
+
+          <button class="button submit-btn"
+            onclick="submitFeedback()">
+
+            ✅ Submit
+          </button>
+
+          <button class="button close-button"
+            onclick="closeFeedbackForm()">
+
+            ❌ Close
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JavaScript -->
   <script src="chemical_bonding.js"></script>
+
 </body>
 
 </html>
