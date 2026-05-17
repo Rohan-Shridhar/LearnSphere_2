@@ -2,46 +2,159 @@
 <html lang="en">
 
 <head>
+  <!-- Meta Information -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculus – Limits, Derivatives & Integrals</title>
+
+  <!-- SEO -->
+  <meta name="description"
+    content="Interactive Calculus learning platform covering limits, derivatives, integrals, animations, theory, formulas, quizzes, and simulations." />
+
+  <title>Calculus – Limits, Derivatives & Integrals | LearnSphere</title>
+
+  <!-- CSS -->
   <link rel="stylesheet" href="calculus.css" />
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
 </head>
 
 <body>
-  <div class="container">
-    <h1>Calculus – Limits, Derivatives & Integrals</h1>
-    <p>Explore the fundamentals of calculus through interactive simulations and resources.</p>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Header -->
+    <header class="page-header">
+      <h1>📘 Calculus – Limits, Derivatives & Integrals</h1>
+
+      <p class="subtitle">
+        Explore the foundations of calculus using interactive simulations,
+        visual animations, formulas, theory notes, and real-world examples.
+      </p>
+    </header>
 
     <!-- Dynamic Content Area -->
-    <div class="canvas-container" id="contentArea">
-      <p>Select an option above to begin exploring calculus concepts.</p>
-    </div>
+    <section class="simulation-section">
 
-    <!-- Control Buttons -->
-    <div class="button-grid">
-      <button class="button" onclick="loadDerivativeCalculator()">🧮 Derivative Calculator</button>
-      <button class="button" onclick="loadTheory()">📖 Theory</button>
-      <button class="button" onclick="loadAnimation()">🎞️ Animation</button>
-      <button class="button" onclick="loadFormulas()">✏️ Formula & Derivation</button>
-      <button class="button" onclick="loadRealLifeExample()">🌍 Real-Life Example</button>
-      <button class="button" onclick="loadInteractive()">🎮 Interactive</button>
-      <a href="../mathsquiz/calculusquiz.html" class="button" target="_blank">🎮 Quiz</a>
-      <button class="button" onclick="openFeedbackForm()">📝 Feedback</button>
-      <a href="../home.html" class="button">🏠 Home</a>
-    </div>
+      <div class="canvas-container" id="contentArea">
+
+        <div class="welcome-message">
+          <h2>Welcome to Calculus Learning Hub</h2>
+
+          <p>
+            Select any learning option below to begin exploring calculus concepts.
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- Resource Buttons -->
+    <section class="resource-section">
+
+      <h2>Learning Resources</h2>
+
+      <div class="button-grid">
+
+        <button class="button primary-btn"
+          onclick="loadDerivativeCalculator()">
+          🧮 Derivative Calculator
+        </button>
+
+        <button class="button" onclick="loadTheory()">
+          📖 Theory
+        </button>
+
+        <button class="button" onclick="loadAnimation()">
+          🎞️ Animation
+        </button>
+
+        <button class="button" onclick="loadFormulas()">
+          ✏️ Formula & Derivation
+        </button>
+
+        <button class="button" onclick="loadRealLifeExample()">
+          🌍 Real-Life Example
+        </button>
+
+        <button class="button" onclick="loadInteractive()">
+          🎮 Interactive Activity
+        </button>
+
+        <!-- Quiz Link -->
+        <a href="../mathsquiz/calculusquiz.html"
+          class="button"
+          target="_blank"
+          rel="noopener noreferrer">
+
+          🧠 Quiz
+        </a>
+
+        <!-- Feedback -->
+        <button class="button" onclick="openFeedbackForm()">
+          📝 Feedback
+        </button>
+
+        <!-- Home -->
+        <a href="../home.html" class="button home-btn">
+          🏠 Home
+        </a>
+
+      </div>
+
+    </section>
 
     <!-- Feedback Popup -->
-    <div id="feedbackPopup" class="feedback-popup hidden">
-      <h2>📝 Your Feedback</h2>
-      <p>Let us know what you think about the calculus simulation!</p>
-      <textarea id="feedbackInput" placeholder="Type your feedback here..." rows="4"></textarea>
-      <button class="button" onclick="submitFeedback()">Submit</button>
-      <button class="button close-button" onclick="closeFeedbackForm()">❌ Close</button>
-    </div>
-  </div>
+    <section id="feedbackPopup"
+      class="feedback-popup hidden">
 
+      <div class="feedback-card">
+
+        <h2>📝 Share Your Feedback</h2>
+
+        <p>
+          Tell us how we can improve the calculus learning experience.
+        </p>
+
+        <textarea
+          id="feedbackInput"
+          placeholder="Type your feedback here..."
+          rows="5"
+          aria-label="Feedback Input">
+        </textarea>
+
+        <div class="feedback-buttons">
+
+          <button class="button submit-btn"
+            onclick="submitFeedback()">
+
+            ✅ Submit
+          </button>
+
+          <button class="button close-button"
+            onclick="closeFeedbackForm()">
+
+            ❌ Close
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- External JavaScript -->
   <script src="calculus.js"></script>
+
 </body>
 
 </html>
