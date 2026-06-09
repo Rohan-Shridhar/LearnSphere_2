@@ -111,6 +111,28 @@ function closeConfirmPopup() {
 }
 
 function showResults() {
+    const finishAt = Date.now();
+    const totalQuestions = questions.length;
+    const totalScore = score;
+    const correctCount = score;
+    const startAt = window.__quizMotionStartedAt || finishAt;
+    const timeTakenMs = Math.max(0, finishAt - startAt);
+
+    try {
+        if (window.quizProgress && typeof window.quizProgress.recordAttempt === 'function') {
+            window.quizProgress.recordAttempt({
+                topicId: "physics-motion",
+                score: totalScore,
+                totalQuestions,
+                correctCount,
+                timeTakenMs,
+                quizId: "quiz:motion",
+            });
+        }
+    } catch (e) {
+        console.warn("LearnSphere: Failed to record quiz progress", e);
+    }
+
     document.getElementById("quiz-box").classList.add("hidden");
     document.getElementById("result-box").classList.remove("hidden");
 
@@ -140,6 +162,7 @@ function updateProgressBar() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    window.__quizMotionStartedAt = Date.now();
     document.getElementById("progress-bar").style.width = "0%";
     loadQuestion();
 });

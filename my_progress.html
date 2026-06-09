@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Progress - LearnSphere</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .progress-wrap {
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: #0f1115;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .muted { color: rgba(255,255,255,0.72); }
+
+    .kpi {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .kpi .item {
+      min-width: 170px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    canvas { width: 100%; height: 240px; }
+
+    .topic-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .topic-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .bar {
+      flex: 1;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0 10px;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: #66fcf1;
+    }
+
+    .recommend-chip {
+      display: inline-block;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(102, 252, 241, 0.12);
+      border: 1px solid rgba(102, 252, 241, 0.35);
+      cursor: default;
+      margin-right: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .streak {
+      font-size: 13px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="navbar">
+    <div class="logo"><a href="index.html">LearnSphere</a></div>
+    <nav>
+      <ul>
+        <li><a href="explore.html">Explore</a></li>
+        <li><a href="courses.html">Courses</a></li>
+        <li><a href="resources.html">Resources</a></li>
+        <li><a href="community.html">Community</a></li>
+      </ul>
+    </nav>
+    <div class="buttons">
+      <button class="login"><a href="log/login.html">Log in</a></button>
+      <button class="signup"><a href="log/register.html">Sign up</a></button>
+    </div>
+  </header>
+
+  <div class="progress-wrap">
+    <h1>My Progress</h1>
+    <p class="muted">Track quiz performance, accuracy trends, and daily streak.</p>
+
+    <div class="kpi">
+      <div class="item">
+        <div class="muted">Current Streak</div>
+        <div id="streakValue" style="font-size:26px; margin-top:6px;">—</div>
+        <div class="streak muted" id="streakMeta">—</div>
+      </div>
+      <div class="item">
+        <div class="muted">Overall Accuracy</div>
+        <div id="overallAccuracyValue" style="font-size:26px; margin-top:6px;">—</div>
+        <div class="streak muted" id="overallAccuracyMeta">—</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2 style="margin-top:0">Accuracy over time</h2>
+        <canvas id="accuracyChart"></canvas>
+        <div class="muted" style="font-size:13px; margin-top:8px">
+          Based on the last 14 days of quiz attempts.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-top:0">Recommended next</h2>
+        <div id="recommendedTopics" style="margin-top:8px"></div>
+        <div class="muted" style="font-size:13px; margin-top:14px">
+          Recommendations focus on weaker or less-attempted topics.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2 style="margin-top:0">Topic-wise performance</h2>
+      <div id="topicStats" class="topic-list"></div>
+      <div class="muted" style="font-size:13px; margin-top:8px">
+        Shows accuracy and attempts per topic.
+      </div>
+    </div>
+  </div>
+
+  <script src="quizProgress.js"></script>
+  <script src="my_progress.js"></script>
+</body>
+
+</html>
+
