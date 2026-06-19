@@ -1,0 +1,247 @@
+/**
+ * dashboardProgress.js — Parent/Teacher Progress Dashboard (read-only)
+ *
+ * Renders analytics using quizProgress.js localStorage data:
+ * - Accuracy trend chart (last 14 days)
+ * - Weak-topic recommendations
+ * - Topic-wise accuracy + attempts summary
+ * - Streak + overall accuracy KPI
+ *
+ * Works in demo mode (single learner) via localStorage.
+ */
+
+(function () {
+  function pct(n) {
+    if (typeof n !== "number" || Number.isNaN(n)) return "—";
+    return `${Math.round(n * 100)}%`;
+  }
+
+  function formatAttempts(n) {
+    if (typeof n !== "number" || Number.isNaN(n)) return "0";
+    return String(n);
+  }
+
+  function drawLineChart(canvas, labels, accuracyByDay) {
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Background grid
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 4; i++) {
+      const y = (h / 5) * i;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    const valid = accuracyByDay
+      .map((a, idx) => ({ a, idx }))
+      .filter(p => typeof p.a === "number" && !Number.isNaN(p.a));
+
+    if (valid.length < 2) {
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "14px Arial";
+      ctx.fillText("Complete at least 2 quiz attempts to see a trend.", 16, 28);
+      return;
+    }
+
+    const xStep = w / (labels.length - 1);
+    const marginTop = 16;
+    const marginBottom = 24;
+    const usable = h - marginTop - marginBottom;
+
+    const toY = (acc) => marginTop + (1 - acc) * usable;
+
+    // Line
+    ctx.strokeStyle = "#66fcf1";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for (let i = 0; i < accuracyByDay.length; i++) {
+      const a = accuracyByDay[i];
+      if (typeof a !== "number" || Number.isNaN(a)) continue;
+      const x = i * xStep;
+      const y = toY(a);
+      if (ctx.__started !== true) {
+        ctx.moveTo(x, y);
+        ctx.__started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    // Reset helper
+    delete ctx.__started;
+
+    ctx.stroke();
+
+    // Points
+    valid.forEach(({ a, idx }) => {
+      const x = idx * xStep;
+      const y = toY(a);
+      ctx.fillStyle = "#66fcf1";
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+
+    // X labels
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.font = "12px Arial";
+    const stride = Math.max(1, Math.floor(labels.length / 6));
+
+    labels.forEach((lab, i) => {
+      if (i % stride !== 0 && i !== labels.length - 1) return;
+      ctx.fillText(lab, i * xStep - 10, h - 8);
+    });
+  }
+
+  function ensureCanvasResolution(canvas, heightPx) {
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    // Use provided height if bbox is 0/undefined.
+    const targetW = rect.width || canvas.width || 600;
+    const targetH = rect.height || heightPx || 240;
+
+    canvas.width = Math.floor(targetW * dpr);
+    canvas.height = Math.floor(targetH * dpr);
+  }
+
+  function renderKpis(root) {
+    const streak = window.quizProgress?.getStreak?.();
+    const overall = window.quizProgress?.getOverallAccuracy?.();
+
+    const streakValue = root.querySelector("#streakValue");
+    const streakMeta = root.querySelector("#streakMeta");
+
+    if (streakValue) streakValue.textContent = String(streak?.currentStreak || 0);
+    if (streakMeta) {
+      const last = streak?.lastPracticeDate;
+      streakMeta.textContent = last ? `Last practice: ${last}` : "No practice yet.";
+    }
+
+    const overallAccuracyValue = root.querySelector("#overallAccuracyValue");
+    const overallAccuracyMeta = root.querySelector("#overallAccuracyMeta");
+
+    if (overallAccuracyValue) overallAccuracyValue.textContent = overall?.accuracy == null ? "—" : pct(overall.accuracy);
+    if (overallAccuracyMeta) {
+      const correct = overall?.correct || 0;
+      const total = overall?.total || 0;
+      overallAccuracyMeta.textContent = total > 0 ? `${correct} correct out of ${total} answers` : "Complete a quiz to populate your stats.";
+    }
+  }
+
+  function renderAccuracyChart(root) {
+    const series = window.quizProgress?.getAccuracySeries?.({ days: 14 });
+    const canvas = root.querySelector("#accuracyChart");
+    if (!canvas) return;
+
+    if (!series || !series.labels || !Array.isArray(series.accuracyByDay)) {
+      const ctx = canvas.getContext("2d");
+      ctx && ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    ensureCanvasResolution(canvas, 240);
+    drawLineChart(canvas, series.labels, series.accuracyByDay);
+  }
+
+  function renderRecommendations(root) {
+    const recEl = root.querySelector("#recommendedTopics");
+    if (!recEl) return;
+
+    const recs = window.quizProgress?.getRecommendedTopics?.({ limit: 3 }) || [];
+    recEl.innerHTML = "";
+
+    if (!recs.length) {
+      recEl.textContent = "No recommendations yet.";
+      return;
+    }
+
+    recs.forEach(r => {
+      const chip = document.createElement("span");
+      chip.className = "recommend-chip";
+      const accText = r.accuracy == null ? "not attempted" : `accuracy ${pct(r.accuracy)}`;
+      chip.textContent = `${r.topic.label} • ${accText}`;
+      recEl.appendChild(chip);
+    });
+  }
+
+  function renderTopicStats(root) {
+    const topicStatsEl = root.querySelector("#topicStats");
+    if (!topicStatsEl) return;
+
+    const byTopic = window.quizProgress?.getAllTopicStats?.() || {};
+    const topics = window.quizProgress?.QUIZ_TOPICS || [];
+
+    const sorted = [...topics].sort((a, b) => {
+      const aAttempts = byTopic[a.id]?.attempts || 0;
+      const bAttempts = byTopic[b.id]?.attempts || 0;
+      return bAttempts - aAttempts;
+    });
+
+    topicStatsEl.innerHTML = "";
+
+    sorted.forEach(t => {
+      const agg = byTopic[t.id];
+      const attempts = agg?.attempts || 0;
+      const qTotal = agg?.questionsTotal || 0;
+      const correctTotal = agg?.correctTotal || 0;
+      const accuracy = qTotal > 0 ? correctTotal / qTotal : null;
+      const barW = accuracy == null ? 0 : Math.max(0, Math.min(100, Math.round(accuracy * 100)));
+
+      const row = document.createElement("div");
+      row.className = "topic-row";
+      row.innerHTML = `
+        <div style="min-width: 210px; font-weight: 600">${t.label}</div>
+        <div class="bar" aria-label="accuracy bar">
+          <i style="width:${barW}%; background:${accuracy == null ? "rgba(255,255,255,0.22)" : "#66fcf1"}"></i>
+        </div>
+        <div style="min-width: 92px; text-align:right">
+          <div style="font-weight:700">${accuracy == null ? "—" : pct(accuracy)}</div>
+          <div class="muted" style="font-size:12px">${formatAttempts(attempts)} attempts</div>
+        </div>
+      `;
+
+      topicStatsEl.appendChild(row);
+    });
+  }
+
+  function renderAll(root) {
+    // Guard: quizProgress must be loaded
+    if (!window.quizProgress) {
+      const status = root.querySelector("#dashboardStatus");
+      if (status) status.textContent = "Progress data not available.";
+      return;
+    }
+
+    renderKpis(root);
+    renderAccuracyChart(root);
+    renderRecommendations(root);
+    renderTopicStats(root);
+  }
+
+  function initByRole() {
+    // Detect a container we can render into.
+    // parents.html / teachers.html will use the same structure.
+    const root = document.querySelector("[data-progress-dashboard='1']");
+    if (!root) return;
+
+    renderAll(root);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initByRole();
+  });
+
+  // Expose for debugging (optional)
+  window.dashboardProgress = { renderAll, initByRole };
+})();
+
