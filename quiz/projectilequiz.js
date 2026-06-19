@@ -1,15 +1,18 @@
 const questions = [
-    { question: "What is the path of a projectile in ideal conditions?", options: ["Straight line", "Circular", "Parabolic", "Elliptical"], answer: "Parabolic" },
-    { question: "What is the horizontal acceleration of a projectile in the absence of air resistance?", options: ["9.8 m/s²", "0 m/s²", "Depends on initial velocity", "Constant"], answer: "0 m/s²" },
-    { question: "At the highest point of its trajectory, what is the vertical velocity of a projectile?", options: ["Maximum", "Zero", "Equal to initial velocity", "Depends on mass"], answer: "Zero" },
-    { question: "Which factor affects the range of a projectile the most?", options: ["Mass", "Launch angle", "Time of flight", "Shape"], answer: "Launch angle" },
-    { question: "What is the optimal angle for maximum range in projectile motion (neglecting air resistance)?", options: ["30°", "45°", "60°", "90°"], answer: "45°" }
+    { difficulty: "easy", question: "What is the path of a projectile in ideal conditions?", options: ["Straight line", "Circular", "Parabolic", "Elliptical"], answer: "Parabolic" },
+    { difficulty: "easy", question: "What is the horizontal acceleration of a projectile in the absence of air resistance?", options: ["9.8 m/s²", "0 m/s²", "Depends on initial velocity", "Constant"], answer: "0 m/s²" },
+    { difficulty: "medium", question: "At the highest point of its trajectory, what is the vertical velocity of a projectile?", options: ["Maximum", "Zero", "Equal to initial velocity", "Depends on mass"], answer: "Zero" },
+    { difficulty: "medium", question: "Which factor affects the range of a projectile the most?", options: ["Mass", "Launch angle", "Time of flight", "Shape"], answer: "Launch angle" },
+    { difficulty: "hard", question: "What is the optimal angle for maximum range in projectile motion (neglecting air resistance)?", options: ["30°", "45°", "60°", "90°"], answer: "45°" }
 ];
 
-let currentQuestionIndex = 0;
+let adaptiveQuiz = null;
+let adaptiveSteps = [];
+let currentStepIndex = 0;
 let score = 0;
 let selectedOption = null;
-let userAnswers = new Array(questions.length).fill(null);
+let userSelectionsByStep = [];
+
 
 function loadQuestion() {
     let questionData = questions[currentQuestionIndex];

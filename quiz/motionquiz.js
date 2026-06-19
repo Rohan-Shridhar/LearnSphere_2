@@ -1,17 +1,19 @@
 const questions = [
-    { question: "What is the SI unit of speed?", options: ["m/s", "km/h", "m/s²", "N"], answer: "m/s" },
-    { question: "What causes an object to accelerate?", options: ["Mass", "Force", "Friction", "Temperature"], answer: "Force" },
-    { question: "Which of these is a scalar quantity?", options: ["Velocity", "Acceleration", "Displacement", "Speed"], answer: "Speed" },
-    { question: "What does Newton's First Law state?", options: ["F = ma", "Action = Reaction", "Objects stay in motion/rest unless acted on", "Momentum is conserved"], answer: "Objects stay in motion/rest unless acted on" },
-    { question: "What is the formula for acceleration?", options: ["v/t", "d/t", "Δv/t", "F/m"], answer: "Δv/t" }
+    { difficulty: "easy", question: "What is the SI unit of speed?", options: ["m/s", "km/h", "m/s²", "N"], answer: "m/s" },
+    { difficulty: "easy", question: "What causes an object to accelerate?", options: ["Mass", "Force", "Friction", "Temperature"], answer: "Force" },
+    { difficulty: "medium", question: "Which of these is a scalar quantity?", options: ["Velocity", "Acceleration", "Displacement", "Speed"], answer: "Speed" },
+    { difficulty: "medium", question: "What does Newton's First Law state?", options: ["F = ma", "Action = Reaction", "Objects stay in motion/rest unless acted on", "Momentum is conserved"], answer: "Objects stay in motion/rest unless acted on" },
+    { difficulty: "hard", question: "What is the formula for acceleration?", options: ["v/t", "d/t", "Δv/t", "F/m"], answer: "Δv/t" }
 ];
 
-let currentQuestionIndex = 0;
+let adaptiveQuiz = null;
+let adaptiveSteps = [];
+let currentStepIndex = 0;
 let score = 0;
 let selectedOption = null;
-let userAnswers = new Array(questions.length).fill(null);
-
+let userSelectionsByStep = [];
 let lastFocusedEl = null;
+
 
 function getSrStatus() {
     return document.getElementById("sr-status");
@@ -28,10 +30,16 @@ function focusMainResultHeading() {
     if (heading) heading.focus();
 }
 
+function currentQuestion() {
+    return adaptiveSteps[currentStepIndex];
+}
+
 function loadQuestion() {
     lastFocusedEl = document.activeElement;
 
-    let questionData = questions[currentQuestionIndex];
+    const questionData = currentQuestion();
+    if (!questionData) return;
+
     document.getElementById("question").textContent = questionData.question;
 
     let optionsContainer = document.getElementById("options");
@@ -51,17 +59,30 @@ function loadQuestion() {
         optionsContainer.appendChild(btn);
     });
 
-    selectedOption = null;
+    selectedOption = userSelectionsByStep[currentStepIndex] || null;
 
-    document.getElementById("next-btn").disabled = true;
-    document.getElementById("prev-btn").disabled = currentQuestionIndex === 0;
-    document.getElementById("submit-btn").classList.toggle("hidden", currentQuestionIndex !== questions.length - 1);
-    document.getElementById("next-btn").classList.toggle("hidden", currentQuestionIndex === questions.length - 1);
+    // Reflect selected option back into UI if navigating back.
+    if (selectedOption) {
+        document.querySelectorAll(".option").forEach(btn => {
+            const t = btn.textContent;
+            if (t === selectedOption) {
+                btn.classList.add("selected");
+                btn.setAttribute("aria-checked", "true");
+            }
+        });
+    }
+
+    const lastStep = adaptiveSteps.length - 1;
+    document.getElementById("next-btn").disabled = !selectedOption;
+    document.getElementById("prev-btn").disabled = currentStepIndex === 0;
+    document.getElementById("submit-btn").classList.toggle("hidden", currentStepIndex !== lastStep);
+    document.getElementById("next-btn").classList.toggle("hidden", currentStepIndex === lastStep);
 
     updateProgressBar();
 
-    announce(`Question ${currentQuestionIndex + 1} of ${questions.length}. ${questionData.question}`);
+    announce(`Question ${currentStepIndex + 1} of ${adaptiveSteps.length}. ${questionData.question}`);
 }
+
 
 function selectOption(button, option) {
     document.querySelectorAll(".option").forEach(btn => {
@@ -73,7 +94,8 @@ function selectOption(button, option) {
     button.setAttribute("aria-checked", "true");
 
     selectedOption = option;
-    userAnswers[currentQuestionIndex] = option;
+
+    userSelectionsByStep[currentStepIndex] = option;
 
     document.getElementById("next-btn").disabled = false;
     announce(`Selected: ${option}`);
@@ -85,14 +107,23 @@ function nextQuestion() {
         return;
     }
 
-    const isCorrect = selectedOption === questions[currentQuestionIndex].answer;
+    const q = currentQuestion();
+    const isCorrect = selectedOption === q.answer;
     if (isCorrect) score++;
+
+    userAnswers[currentStepIndex] = isCorrect;
 
     announce(isCorrect ? "Correct answer." : "Incorrect answer.");
 
-    currentQuestionIndex++;
+    if (adaptiveQuiz) {
+        adaptiveQuiz.updateDifficulty({ isCorrect });
+        if (currentStepIndex + 1 < adaptiveSteps.length) {
+            adaptiveSteps[currentStepIndex + 1] = adaptiveQuiz.takeNext();
+        }
+    }
 
-    if (currentQuestionIndex < questions.length) {
+    currentStepIndex++;
+    if (currentStepIndex < adaptiveSteps.length) {
         loadQuestion();
     } else {
         showResults();
@@ -100,9 +131,11 @@ function nextQuestion() {
 }
 
 function prevQuestion() {
-    currentQuestionIndex--;
+    currentStepIndex--;
+    selectedOption = userSelectionsByStep[currentStepIndex] || null;
     loadQuestion();
 }
+
 
 function confirmSubmit() {
     lastFocusedEl = document.activeElement;
@@ -128,16 +161,19 @@ function submitQuiz() {
 }
 
 function restartQuiz() {
-    currentQuestionIndex = 0;
+    // reset adaptive session state
+    currentStepIndex = 0;
     score = 0;
     selectedOption = null;
-    userAnswers.fill(null);
+    userAnswers = new Array(adaptiveSteps.length).fill(null);
+    userSelectionsByStep = new Array(adaptiveSteps.length).fill(null);
 
     document.getElementById("quiz-box").classList.remove("hidden");
     document.getElementById("result-box").classList.add("hidden");
 
     document.getElementById("progress-bar").style.width = "0%";
 
+    startAdaptiveSession();
     loadQuestion();
 
     setTimeout(() => {
@@ -145,6 +181,7 @@ function restartQuiz() {
         if (firstOption) firstOption.focus();
     }, 0);
 }
+
 
 function showPopup() {
     lastFocusedEl = document.activeElement;
@@ -166,7 +203,7 @@ function closeConfirmPopup() {
 
 function showResults() {
     const finishAt = Date.now();
-    const totalQuestions = questions.length;
+    const totalQuestions = adaptiveSteps.length;
     const totalScore = score;
     const correctCount = score;
     const startAt = window.__quizMotionStartedAt || finishAt;
@@ -193,8 +230,8 @@ function showResults() {
     let scoreText = `You scored <strong>${totalScore}</strong> out of ${totalQuestions}! 🎉`;
     let feedbackHTML = "";
 
-    questions.forEach((q, index) => {
-        let userAnswer = userAnswers[index] || "No answer selected";
+    adaptiveSteps.forEach((q, index) => {
+        let userAnswer = userSelectionsByStep[index] || "No answer selected";
         let isCorrect = userAnswer === q.answer;
 
         feedbackHTML += `
@@ -213,9 +250,44 @@ function showResults() {
     focusMainResultHeading();
 }
 
+
+function startAdaptiveSession() {
+    let startingDi = 1;
+    try {
+        if (window.quizProgress && typeof window.quizProgress.getTopicStats === "function") {
+            const stats = window.quizProgress.getTopicStats("physics-motion");
+            const accuracy = stats?.questionsTotal > 0 ? stats.correctTotal / stats.questionsTotal : null;
+            if (window.getStartingDifficultyFromAccuracy) {
+                startingDi = window.getStartingDifficultyFromAccuracy({ accuracy });
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    if (!window.createAdaptiveQuiz) {
+        adaptiveQuiz = null;
+        adaptiveSteps = questions.map(q => ({ ...q }));
+        currentStepIndex = 0;
+        userAnswers = new Array(adaptiveSteps.length).fill(null);
+        userSelectionsByStep = new Array(adaptiveSteps.length).fill(null);
+        return;
+    }
+
+    adaptiveQuiz = window.createAdaptiveQuiz({ questions, startingDifficultyIndex: startingDi });
+    adaptiveSteps = new Array(questions.length).fill(null);
+    currentStepIndex = 0;
+    userAnswers = new Array(questions.length).fill(null);
+    userSelectionsByStep = new Array(questions.length).fill(null);
+
+    adaptiveSteps[0] = adaptiveQuiz.takeNext();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     window.__quizMotionStartedAt = Date.now();
     document.getElementById("progress-bar").style.width = "0%";
+    startAdaptiveSession();
     loadQuestion();
 });
+
 

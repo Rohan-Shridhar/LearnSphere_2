@@ -1,23 +1,64 @@
 const questions = [
-    { question: "What does Newton's First Law state?", options: ["F = ma", "Action = Reaction", "Objects stay in motion/rest unless acted on", "Momentum is conserved"], answer: "Objects stay in motion/rest unless acted on" },
-    { question: "Which force is required to change the state of motion of an object?", options: ["Friction", "Gravity", "Applied Force", "Centripetal Force"], answer: "Applied Force" },
-    { question: "Newton's Second Law states that force is equal to:", options: ["mass × acceleration", "mass × velocity", "momentum × time", "velocity × time"], answer: "mass × acceleration" },
-    { question: "What happens when two equal and opposite forces act on an object?", options: ["The object moves in the direction of the larger force", "The object accelerates", "The object remains in equilibrium", "The object gains momentum"], answer: "The object remains in equilibrium" },
-    { question: "According to Newton’s Third Law, what happens when you push on a wall?", options: ["The wall moves", "The wall exerts an equal force back on you", "No force is applied back", "Only you experience the force"], answer: "The wall exerts an equal force back on you" },
-    { question: "What is inertia?", options: ["The tendency of an object to resist a change in motion", "The force applied by a moving object", "The acceleration of an object due to gravity", "The energy stored in a moving object"], answer: "The tendency of an object to resist a change in motion" },
-    { question: "If an object's mass increases, what happens to the force required to accelerate it?", options: ["Increases", "Decreases", "Remains the same", "Depends on velocity"], answer: "Increases" },
-    { question: "Which of the following is an example of Newton’s Third Law?", options: ["A car accelerating when force is applied", "A book resting on a table", "A rocket launching by expelling gases", "An object staying at rest"], answer: "A rocket launching by expelling gases" }
+    { difficulty: "easy", question: "What does Newton's First Law state?", options: ["F = ma", "Action = Reaction", "Objects stay in motion/rest unless acted on", "Momentum is conserved"], answer: "Objects stay in motion/rest unless acted on" },
+    { difficulty: "easy", question: "Which force is required to change the state of motion of an object?", options: ["Friction", "Gravity", "Applied Force", "Centripetal Force"], answer: "Applied Force" },
+    { difficulty: "medium", question: "Newton's Second Law states that force is equal to:", options: ["mass × acceleration", "mass × velocity", "momentum × time", "velocity × time"], answer: "mass × acceleration" },
+    { difficulty: "medium", question: "What happens when two equal and opposite forces act on an object?", options: ["The object moves in the direction of the larger force", "The object accelerates", "The object remains in equilibrium", "The object gains momentum"], answer: "The object remains in equilibrium" },
+    { difficulty: "medium", question: "According to Newton’s Third Law, what happens when you push on a wall?", options: ["The wall moves", "The wall exerts an equal force back on you", "No force is applied back", "Only you experience the force"], answer: "The wall exerts an equal force back on you" },
+    { difficulty: "medium", question: "What is inertia?", options: ["The tendency of an object to resist a change in motion", "The force applied by a moving object", "The acceleration of an object due to gravity", "The energy stored in a moving object"], answer: "The tendency of an object to resist a change in motion" },
+    { difficulty: "hard", question: "If an object's mass increases, what happens to the force required to accelerate it?", options: ["Increases", "Decreases", "Remains the same", "Depends on velocity"], answer: "Increases" },
+    { difficulty: "hard", question: "Which of the following is an example of Newton’s Third Law?", options: ["A car accelerating when force is applied", "A book resting on a table", "A rocket launching by expelling gases", "An object staying at rest"], answer: "A rocket launching by expelling gases" }
 ];
 
-let currentQuestionIndex = 0;
+let adaptiveQuiz = null;
+let adaptiveSteps = [];
+let currentStepIndex = 0;
 let score = 0;
 let selectedOption = null;
-let userAnswers = new Array(questions.length).fill(null);
+let userAnswers = [];
+let userSelectionsByStep = [];
+
 let lastFocusedEl = null;
+
+function startAdaptiveSession() {
+    // Determine starting difficulty from past topic accuracy.
+    let startingDi = 1;
+    try {
+        if (window.quizProgress && typeof window.quizProgress.getTopicStats === "function") {
+            const stats = window.quizProgress.getTopicStats("physics-nlm");
+            const accuracy = stats?.questionsTotal > 0 ? stats.correctTotal / stats.questionsTotal : null;
+            if (window.getStartingDifficultyFromAccuracy) {
+                startingDi = window.getStartingDifficultyFromAccuracy({ accuracy });
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    if (!window.createAdaptiveQuiz) {
+        // Fallback: non-adaptive.
+        adaptiveQuiz = null;
+        adaptiveSteps = questions.map(q => ({ ...q }));
+        currentStepIndex = 0;
+        userAnswers = new Array(adaptiveSteps.length).fill(null);
+        userSelectionsByStep = new Array(adaptiveSteps.length).fill(null);
+        return;
+    }
+
+    adaptiveQuiz = window.createAdaptiveQuiz({ questions, startingDifficultyIndex: startingDi });
+    adaptiveSteps = new Array(questions.length).fill(null);
+    currentStepIndex = 0;
+    userAnswers = new Array(questions.length).fill(null);
+    userSelectionsByStep = new Array(questions.length).fill(null);
+
+    // Fill initial first question.
+    adaptiveSteps[0] = adaptiveQuiz.takeNext();
+}
+
 
 function getSrStatus() {
     return document.getElementById("sr-status");
 }
+
 
 function announce(message) {
     const el = getSrStatus();
@@ -30,24 +71,27 @@ function focusMainResultHeading() {
     if (heading) heading.focus();
 }
 
+function currentQuestion() {
+    return adaptiveSteps[currentStepIndex];
+}
+
 function loadQuestion() {
     lastFocusedEl = document.activeElement;
 
-    let questionData = questions[currentQuestionIndex];
+    const questionData = currentQuestion();
+    if (!questionData) return;
+
     document.getElementById("question").textContent = questionData.question;
 
     let optionsContainer = document.getElementById("options");
     optionsContainer.innerHTML = "";
 
-    // Use button elements as options. Keep native keyboard handling.
     questionData.options.forEach(option => {
         let btn = document.createElement("button");
         btn.classList.add("option");
         btn.type = "button";
         btn.textContent = option;
 
-        // ARIA: map selection to radiogroup semantics.
-        // When user navigates with Tab/Shift+Tab, screen readers get current selection.
         btn.setAttribute("role", "radio");
         btn.setAttribute("aria-checked", "false");
         btn.onclick = () => selectOption(btn, option);
@@ -56,15 +100,18 @@ function loadQuestion() {
     });
 
     selectedOption = null;
+
+    const lastStep = adaptiveSteps.length - 1;
     document.getElementById("next-btn").disabled = true;
-    document.getElementById("prev-btn").disabled = currentQuestionIndex === 0;
-    document.getElementById("submit-btn").classList.toggle("hidden", currentQuestionIndex !== questions.length - 1);
-    document.getElementById("next-btn").classList.toggle("hidden", currentQuestionIndex === questions.length - 1);
+    document.getElementById("prev-btn").disabled = currentStepIndex === 0;
+    document.getElementById("submit-btn").classList.toggle("hidden", currentStepIndex !== lastStep);
+    document.getElementById("next-btn").classList.toggle("hidden", currentStepIndex === lastStep);
 
     updateProgressBar();
 
-    announce(`Question ${currentQuestionIndex + 1} of ${questions.length}. ${questionData.question}`);
+    announce(`Question ${currentStepIndex + 1} of ${adaptiveSteps.length}. ${questionData.question}`);
 }
+
 
 function selectOption(button, option) {
     document.querySelectorAll(".option").forEach(btn => {
@@ -76,7 +123,8 @@ function selectOption(button, option) {
     button.setAttribute("aria-checked", "true");
 
     selectedOption = option;
-    userAnswers[currentQuestionIndex] = option;
+
+    userSelectionsByStep[currentStepIndex] = option;
 
     document.getElementById("next-btn").disabled = false;
     announce(`Selected: ${option}`);
@@ -88,13 +136,25 @@ function nextQuestion() {
         return;
     }
 
-    const isCorrect = selectedOption === questions[currentQuestionIndex].answer;
+    const q = currentQuestion();
+    const isCorrect = selectedOption === q.answer;
     if (isCorrect) score++;
+
+    userAnswers[currentStepIndex] = isCorrect;
 
     announce(isCorrect ? "Correct answer." : "Incorrect answer.");
 
-    currentQuestionIndex++;
-    if (currentQuestionIndex < questions.length) {
+    // Update difficulty for subsequent questions.
+    if (adaptiveQuiz) {
+        adaptiveQuiz.updateDifficulty({ isCorrect });
+        if (currentStepIndex + 1 < adaptiveSteps.length) {
+            // Determine next question based on updated difficulty.
+            adaptiveSteps[currentStepIndex + 1] = adaptiveQuiz.takeNext();
+        }
+    }
+
+    currentStepIndex++;
+    if (currentStepIndex < adaptiveSteps.length) {
         loadQuestion();
     } else {
         showResults();
@@ -102,9 +162,12 @@ function nextQuestion() {
 }
 
 function prevQuestion() {
-    currentQuestionIndex--;
+    // Keep the navigation simple: go back one step, do not re-run difficulty.
+    currentStepIndex--;
+    selectedOption = userSelectionsByStep[currentStepIndex] || null;
     loadQuestion();
 }
+
 
 function confirmSubmit() {
     lastFocusedEl = document.activeElement;
@@ -131,24 +194,27 @@ function submitQuiz() {
 }
 
 function restartQuiz() {
-    currentQuestionIndex = 0;
+    currentStepIndex = 0;
     score = 0;
     selectedOption = null;
-    userAnswers.fill(null);
+    userAnswers = new Array(adaptiveSteps.length).fill(null);
+    userSelectionsByStep = new Array(adaptiveSteps.length).fill(null);
 
     document.getElementById("quiz-box").classList.remove("hidden");
     document.getElementById("result-box").classList.add("hidden");
 
     document.getElementById("progress-bar").style.width = "0%";
 
+    // rebuild adaptive quiz session
+    startAdaptiveSession();
     loadQuestion();
 
-    // Focus first option after load.
     setTimeout(() => {
         const firstOption = document.querySelector("#options .option");
         if (firstOption) firstOption.focus();
     }, 0);
 }
+
 
 function showPopup() {
     lastFocusedEl = document.activeElement;
@@ -170,7 +236,7 @@ function closeConfirmPopup() {
 
 function showResults() {
     const finishAt = Date.now();
-    const totalQuestions = questions.length;
+    const totalQuestions = adaptiveSteps.length;
     const totalScore = score;
     const correctCount = score;
     const startAt = window.__quizNlmStartedAt || finishAt;
@@ -197,8 +263,8 @@ function showResults() {
     let scoreText = `You scored <strong>${totalScore}</strong> out of ${totalQuestions}! 🎉`;
     let feedbackHTML = "";
 
-    questions.forEach((q, index) => {
-        let userAnswer = userAnswers[index] || "No answer selected";
+    adaptiveSteps.forEach((q, index) => {
+        let userAnswer = userSelectionsByStep[index] || "No answer selected";
         let isCorrect = userAnswer === q.answer;
 
         feedbackHTML += `
@@ -217,14 +283,53 @@ function showResults() {
     focusMainResultHeading();
 }
 
+
 function updateProgressBar() {
-    let progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    let progress = ((currentStepIndex + 1) / adaptiveSteps.length) * 100;
     document.getElementById("progress-bar").style.width = progress + "%";
+}
+
+function startAdaptiveSession() {
+    // Determine starting difficulty from past topic accuracy.
+    let startingDi = 1;
+    try {
+        if (window.quizProgress && typeof window.quizProgress.getTopicStats === 'function') {
+            const stats = window.quizProgress.getTopicStats('physics-nlm');
+            const accuracy = stats?.questionsTotal > 0 ? (stats.correctTotal / stats.questionsTotal) : null;
+            if (window.getStartingDifficultyFromAccuracy) {
+                startingDi = window.getStartingDifficultyFromAccuracy({ accuracy });
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    if (!window.createAdaptiveQuiz) {
+        // Fallback: non-adaptive.
+        adaptiveQuiz = null;
+        adaptiveSteps = questions.map(q => ({ ...q }));
+        currentStepIndex = 0;
+        userAnswers = new Array(adaptiveSteps.length).fill(null);
+        userSelectionsByStep = new Array(adaptiveSteps.length).fill(null);
+        return;
+    }
+
+    adaptiveQuiz = window.createAdaptiveQuiz({ questions, startingDifficultyIndex: startingDi });
+    adaptiveSteps = new Array(questions.length).fill(null);
+    currentStepIndex = 0;
+    userAnswers = new Array(questions.length).fill(null);
+    userSelectionsByStep = new Array(questions.length).fill(null);
+
+    // Fill initial first question.
+    adaptiveSteps[0] = adaptiveQuiz.takeNext();
+    // Remaining questions will be determined as user answers.
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     window.__quizNlmStartedAt = Date.now();
     document.getElementById("progress-bar").style.width = "0%";
+    startAdaptiveSession();
     loadQuestion();
 });
+
 
