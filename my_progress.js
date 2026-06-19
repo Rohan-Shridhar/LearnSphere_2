@@ -178,5 +178,12 @@ function init() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  init();
+  if (window.achievements?.renderBadges) {
+    window.achievements.renderBadges("badgesContainerMyProgress");
+  }
+});
+
+
 
