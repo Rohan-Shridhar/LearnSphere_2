@@ -54,12 +54,51 @@
     </section>
 
     <section class="content">
-        <h2>Why LearnSphere?</h2>
-        <p>We offer a variety of courses designed to help you excel in academics and beyond.</p>
-        <button class="cta">Start Learning</button>
+        <h2>Teacher Progress Dashboard</h2>
+        <p>Accuracy trends and weak-topic insights — read-only demo mode.</p>
+    </section>
+
+    <section class="content" style="padding-top:0">
+        <div data-progress-dashboard="1" class="dashboard-container">
+            <div class="kpi" style="display:flex;gap:16px;flex-wrap:wrap;margin:0 0 14px 0">
+                <div class="item" style="min-width:190px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">
+                    <div style="color:rgba(255,255,255,0.72)">Current Streak</div>
+                    <div id="streakValue" style="font-size:26px;margin-top:6px">—</div>
+                    <div id="streakMeta" style="font-size:13px;margin-top:6px;color:rgba(255,255,255,0.72)">—</div>
+                </div>
+                <div class="item" style="min-width:190px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">
+                    <div style="color:rgba(255,255,255,0.72)">Overall Accuracy</div>
+                    <div id="overallAccuracyValue" style="font-size:26px;margin-top:6px">—</div>
+                    <div id="overallAccuracyMeta" style="font-size:13px;margin-top:6px;color:rgba(255,255,255,0.72)">—</div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">
+                <div class="card" style="background:#0f1115;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.2)">
+                    <h2 style="margin-top:0">Accuracy over time</h2>
+                    <canvas id="accuracyChart" style="width:100%;height:240px"></canvas>
+                    <div style="font-size:13px;margin-top:8px;color:rgba(255,255,255,0.72)">Last 14 days of attempts.</div>
+                </div>
+
+                <div class="card" style="background:#0f1115;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.2)">
+                    <h2 style="margin-top:0">What to reteach (recommended)</h2>
+                    <div id="recommendedTopics" style="margin-top:8px"></div>
+                    <div style="font-size:13px;margin-top:14px;color:rgba(255,255,255,0.72)">Lower accuracy topics appear first.</div>
+                </div>
+            </div>
+
+            <div class="card" style="background:#0f1115;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.2);margin-top:16px">
+                <h2 style="margin-top:0">Topic-wise performance</h2>
+                <div id="topicStats" class="topic-list" style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px"></div>
+                <div style="font-size:13px;margin-top:8px;color:rgba(255,255,255,0.72)">Shows accuracy + attempts per topic (read-only).</div>
+            </div>
+        </div>
     </section>
 
     <script src="navbar.js"></script>
     <script src="script.js"></script>
+    <script src="quizProgress.js"></script>
+    <script src="dashboardProgress.js"></script>
 </body>
 </html>
+
