@@ -45,7 +45,7 @@ function _todayLocalISODate() {
 function _parseISODateToUTCStart(isoDateYYYYMMDD) {
   // Treat isoDate as local date; convert to a numeric day token.
   // For streak we only need day-to-day adjacency, so a day token in local time is fine.
-  const [y, m, d] = isoDateYYYYMMDD.split("-".map(Number);
+  const [y, m, d] = isoDateYYYYMMDD.split("-").map(Number);
   const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
   return Math.floor(dt.getTime() / 86400000);
 }

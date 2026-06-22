@@ -1,14 +1,11 @@
 /*
- * review.js — Spaced Repetition Review Mode
+ * review.js — Spaced Repetition Review Mode & Dashboard Controller
  *
- * Provides a small review quiz runner (placeholder implementation)
- * and updates per-topic nextReviewDate using spaced repetition logic
+ * Provides review quiz runner and updates per-topic nextReviewDate using spaced repetition logic
  * stored in progress.js localStorage key:
  *   learnsphere_review_schedule_v1
  *
- * Expected integration:
- * - progress.js calls: window.ReviewMode.start(topicId)
- * - home.html includes a modal container with ids used below.
+ * Exposes methods to load lists, display stats, and timeline history.
  */
 
 (function () {
@@ -21,7 +18,7 @@
   }
 
   function _parseISODateToUTCStart(isoDateYYYYMMDD) {
-    const [y, m, d] = isoDateYYYYMMDD.split("-".map(Number));
+    const [y, m, d] = isoDateYYYYMMDD.split("-").map(Number);
     const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
     return Math.floor(dt.getTime() / 86400000);
   }
@@ -37,6 +34,27 @@
   }
 
   const REVIEW_SCHEDULE_KEY = "learnsphere_review_schedule_v1";
+  const REVIEW_HISTORY_KEY = "learnsphere_review_history_v1";
+
+  // Fallback TOPICS list in case progress.js is not loaded
+  const TOPICS_FALLBACK = [
+    { id: "physics-motion",       label: "Physics: Motion",                   subject: "physics"   },
+    { id: "physics-nlm",          label: "Physics: Newton's Laws of Motion",  subject: "physics"   },
+    { id: "physics-projectile",   label: "Physics: Projectile Motion",        subject: "physics"   },
+    { id: "physics-ray",          label: "Physics: Ray Optics",               subject: "physics"   },
+    { id: "maths-calculus",       label: "Maths: Calculus",                   subject: "maths"     },
+    { id: "maths-vectors",        label: "Maths: Vectors & 3D Geometry",      subject: "maths"     },
+    { id: "maths-probability",    label: "Maths: Probability & Statistics",   subject: "maths"     },
+    { id: "maths-geometry",       label: "Maths: Coordinate Geometry",        subject: "maths"     },
+    { id: "chemistry-atomic",     label: "Chemistry: Atomic Structure",       subject: "chemistry" },
+    { id: "chemistry-bonding",    label: "Chemistry: Chemical Bonding",       subject: "chemistry" },
+    { id: "chemistry-equil",      label: "Chemistry: Equilibrium",            subject: "chemistry" },
+    { id: "chemistry-thermo",     label: "Chemistry: Thermodynamics",         subject: "chemistry" },
+  ];
+
+  function getTopicsList() {
+    return (typeof TOPICS !== "undefined" && Array.isArray(TOPICS)) ? TOPICS : TOPICS_FALLBACK;
+  }
 
   function loadSchedule() {
     try {
@@ -51,6 +69,22 @@
       localStorage.setItem(REVIEW_SCHEDULE_KEY, JSON.stringify(map));
     } catch (e) {
       console.warn("LearnSphere: Could not save review schedule.", e);
+    }
+  }
+
+  function loadHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(REVIEW_HISTORY_KEY)) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory(list) {
+    try {
+      localStorage.setItem(REVIEW_HISTORY_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn("LearnSphere: Could not save review history.", e);
     }
   }
 
@@ -75,9 +109,11 @@
       nextInterval = 1;
     }
 
+    const nextReviewDate = _addDaysISO(today, nextInterval);
+
     schedule[topicId] = {
       intervalDays: nextInterval,
-      nextReviewDate: _addDaysISO(today, nextInterval),
+      nextReviewDate,
       lastReviewedAt: today,
       lastScorePct: pct,
       lastAnsweredCount: answeredCount,
@@ -85,12 +121,46 @@
     };
 
     saveSchedule(schedule);
+
+    // Save to chronological history log
+    const history = loadHistory();
+    history.unshift({
+      topicId,
+      scorePct: pct,
+      answeredCount,
+      reviewedAt: today,
+      timestamp: Date.now()
+    });
+    // Keep history reasonably bounded (e.g., last 100 reviews)
+    if (history.length > 100) {
+      history.splice(100);
+    }
+    saveHistory(history);
+
     return schedule[topicId];
   }
 
+  function skipTopic(topicId) {
+    if (!topicId) return;
+    const today = _todayLocalISODate();
+    const schedule = loadSchedule();
+    const prev = schedule[topicId] || {};
+
+    // Skip action: postpones review by a fixed interval of +2 days
+    schedule[topicId] = {
+      ...prev,
+      intervalDays: 2,
+      nextReviewDate: _addDaysISO(today, 2),
+      updatedAt: Date.now()
+    };
+
+    saveSchedule(schedule);
+
+    // Dispatch event to re-render UI in real time
+    window.dispatchEvent(new Event("review-saved"));
+  }
+
   // Minimal question set per topic.
-  // This is intentionally generic because each topic quiz page has its own
-  // question bank and formats. This review mode is designed to be lightweight.
   function getReviewQuiz(topicId) {
     const bank = {
       "physics-motion": [
@@ -272,7 +342,10 @@
     const submitBtn = document.getElementById("reviewSubmitBtn");
 
     if (modalTitle) modalTitle.textContent = `Review: ${topicLabel || topicId}`;
-    if (container) container.innerHTML = "";
+    if (container) {
+      container.innerHTML = "";
+      container.dataset.topicId = topicId;
+    }
     if (msg) msg.textContent = "";
 
     if (!container) return;
@@ -280,25 +353,55 @@
     quiz.forEach((item, idx) => {
       const qWrap = document.createElement("div");
       qWrap.className = "review-question";
+      qWrap.style.marginBottom = "20px";
 
       const h = document.createElement("div");
       h.className = "review-question-text";
+      h.style.fontWeight = "bold";
+      h.style.fontSize = "1rem";
+      h.style.marginBottom = "10px";
+      h.style.color = "var(--text-color)";
       h.textContent = `${idx + 1}. ${item.q}`;
 
       const optionsWrap = document.createElement("div");
       optionsWrap.className = "review-options";
+      optionsWrap.style.display = "flex";
+      optionsWrap.style.flexDirection = "column";
+      optionsWrap.style.gap = "8px";
 
       item.options.forEach((opt, optIdx) => {
         const label = document.createElement("label");
-        label.style.display = "block";
+        label.style.display = "flex";
+        label.style.alignItems = "center";
+        label.style.gap = "10px";
+        label.style.padding = "10px 12px";
+        label.style.borderRadius = "6px";
+        label.style.background = "var(--progress-item-bg)";
+        label.style.border = "1px solid var(--border-color)";
+        label.style.cursor = "pointer";
+        label.style.transition = "var(--theme-transition)";
 
         const radio = document.createElement("input");
         radio.type = "radio";
         radio.name = `review_q_${idx}`;
         radio.value = String(optIdx);
+        radio.style.cursor = "pointer";
 
         label.appendChild(radio);
         label.appendChild(document.createTextNode(` ${opt}`));
+
+        // Add visual feedback on click/hover
+        radio.addEventListener("change", () => {
+          optionsWrap.querySelectorAll("label").forEach(l => {
+            l.style.borderColor = "var(--border-color)";
+            l.style.background = "var(--progress-item-bg)";
+          });
+          if (radio.checked) {
+            label.style.borderColor = "var(--accent-color)";
+            label.style.background = "rgba(56, 189, 248, 0.08)";
+          }
+        });
+
         optionsWrap.appendChild(label);
       });
 
@@ -321,11 +424,9 @@
     const container = document.getElementById("reviewQuizContainer");
     if (!container) return { scorePct: 0, correctCount: 0, total: 0, answeredCount: 0 };
 
-    // Determine question count from DOM by counting .review-question
     const questions = Array.from(container.querySelectorAll(".review-question"));
     const total = questions.length;
 
-    // Recompute correct answers using topicId set in modal dataset
     const topicId = container.dataset.topicId;
     const quiz = getReviewQuiz(topicId);
 
@@ -347,10 +448,9 @@
   }
 
   function start(topicId) {
-    const schedule = loadSchedule();
-
-    // Find a label from progress.js TOPICS (not accessible). Fallback to id.
-    const topicLabel = topicId;
+    const topicsList = getTopicsList();
+    const foundTopic = topicsList.find(t => t.id === topicId);
+    const topicLabel = foundTopic ? foundTopic.label : topicId;
 
     const modal = ensureModal();
     const container = document.getElementById("reviewQuizContainer");
@@ -367,19 +467,256 @@
 
         recordReviewResult({ topicId, scorePct, answeredCount });
 
-        // Short delay, then close
+        // Disable button while closing
+        submitBtn.disabled = true;
+
         setTimeout(() => {
           closeModal();
-          // Notify progress.js to re-render list
+          // Dispatch event to refresh lists in real time
           window.dispatchEvent(new Event("review-saved"));
-        }, 650);
+        }, 800);
       };
     }
   }
 
+  // ─── Dashboard Render Logic ────────────────────────────────────────────────
+  function initDashboard() {
+    const dueListEl = document.getElementById("due-list");
+    if (!dueListEl) return; // Not on review.html
+
+    const schedule = loadSchedule();
+    const today = _todayLocalISODate();
+    const todayToken = _parseISODateToUTCStart(today);
+
+    let progressMap = {};
+    try {
+      progressMap = JSON.parse(localStorage.getItem("learnsphere_progress")) || {};
+    } catch {}
+
+    const topicsList = getTopicsList();
+    const dueTopics = [];
+    const upcomingTopics = [];
+
+    topicsList.forEach(topic => {
+      const s = schedule[topic.id];
+      const prog = progressMap[topic.id] || "not-started";
+
+      if (s && s.nextReviewDate) {
+        const nextToken = _parseISODateToUTCStart(s.nextReviewDate);
+        if (todayToken >= nextToken) {
+          dueTopics.push({ topic, schedule: s, isDue: true });
+        } else {
+          upcomingTopics.push({ topic, schedule: s, isDue: false });
+        }
+      } else {
+        // Never reviewed: if completed or in-progress, consider it due today
+        if (prog === "completed" || prog === "in-progress") {
+          dueTopics.push({ topic, schedule: null, isDue: true });
+        } else {
+          upcomingTopics.push({ topic, schedule: null, isDue: false });
+        }
+      }
+    });
+
+    // Sort upcoming: scheduled ones first (sorted by soonest date), unscheduled last
+    upcomingTopics.sort((a, b) => {
+      if (a.schedule && b.schedule) {
+        return _parseISODateToUTCStart(a.schedule.nextReviewDate) - _parseISODateToUTCStart(b.schedule.nextReviewDate);
+      }
+      if (a.schedule) return -1;
+      if (b.schedule) return 1;
+      return 0;
+    });
+
+    // Render Stats
+    const statsDueEl = document.getElementById("stats-due-count");
+    if (statsDueEl) statsDueEl.textContent = String(dueTopics.length);
+
+    let totalScore = 0;
+    let reviewedCount = 0;
+    for (const id in schedule) {
+      const s = schedule[id];
+      if (s && typeof s.lastScorePct === "number" && s.lastReviewedAt) {
+        totalScore += s.lastScorePct;
+        reviewedCount += 1;
+      }
+    }
+    const avgAccuracyEl = document.getElementById("stats-accuracy-average");
+    if (avgAccuracyEl) {
+      avgAccuracyEl.textContent = reviewedCount > 0 ? `${Math.round(totalScore / reviewedCount)}%` : "—";
+    }
+
+    const history = loadHistory();
+    const totalReviewsEl = document.getElementById("stats-total-reviews");
+    if (totalReviewsEl) totalReviewsEl.textContent = String(history.length);
+
+    // Render Due Today List
+    dueListEl.innerHTML = "";
+    if (dueTopics.length === 0) {
+      dueListEl.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-state-icon">🎉</span>
+          No reviews due today! Keep up the good work.
+        </div>
+      `;
+    } else {
+      dueTopics.forEach(({ topic, schedule: s }) => {
+        const item = document.createElement("div");
+        item.className = "review-item";
+        
+        let metaText = "Never reviewed";
+        if (s && s.lastReviewedAt) {
+          metaText = `Last reviewed: ${s.lastReviewedAt} (${s.lastScorePct}% score)`;
+        }
+
+        item.innerHTML = `
+          <div class="item-details">
+            <div class="item-title">${topic.label}</div>
+            <div class="item-meta">
+              <span class="badge-subject">${topic.subject}</span>
+              <span>•</span>
+              <span>${metaText}</span>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="action-btn skip" data-id="${topic.id}" title="Postpone review by 2 days">Skip for now</button>
+            <button class="action-btn start" data-id="${topic.id}">Review Now</button>
+          </div>
+        `;
+
+        // Bind buttons
+        item.querySelector(".action-btn.start").addEventListener("click", () => {
+          start(topic.id);
+        });
+        item.querySelector(".action-btn.skip").addEventListener("click", () => {
+          skipTopic(topic.id);
+        });
+
+        dueListEl.appendChild(item);
+      });
+    }
+
+    // Render Upcoming List
+    const upcomingListEl = document.getElementById("upcoming-list");
+    if (upcomingListEl) {
+      upcomingListEl.innerHTML = "";
+      if (upcomingTopics.length === 0) {
+        upcomingListEl.innerHTML = `
+          <div class="empty-state">
+            No reviews scheduled yet. Complete topics to start getting review sessions.
+          </div>
+        `;
+      } else {
+        upcomingTopics.forEach(({ topic, schedule: s }) => {
+          const item = document.createElement("div");
+          item.className = "review-item";
+          
+          let metaText = "Unscheduled — Start reviewing to build streak";
+          let actionText = "Start Review";
+          if (s && s.nextReviewDate) {
+            const todayToken = _parseISODateToUTCStart(_todayLocalISODate());
+            const nextToken = _parseISODateToUTCStart(s.nextReviewDate);
+            const delta = nextToken - todayToken;
+            const daysLeft = delta <= 0 ? "Today" : `${delta}d`;
+            metaText = `Scheduled: Review in ${daysLeft} (${s.nextReviewDate})`;
+            actionText = "Review Early";
+          }
+
+          item.innerHTML = `
+            <div class="item-details">
+              <div class="item-title">${topic.label}</div>
+              <div class="item-meta">
+                <span class="badge-subject">${topic.subject}</span>
+                <span>•</span>
+                <span>${metaText}</span>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="action-btn start" style="background:var(--btn-secondary-bg); color:var(--text-color); border:1px solid var(--border-color);" data-id="${topic.id}">${actionText}</button>
+            </div>
+          `;
+
+          item.querySelector(".action-btn.start").addEventListener("click", () => {
+            start(topic.id);
+          });
+
+          upcomingListEl.appendChild(item);
+        });
+      }
+    }
+
+    // Render Timeline / History List
+    const historyListEl = document.getElementById("history-list");
+    if (historyListEl) {
+      historyListEl.innerHTML = "";
+      if (history.length === 0) {
+        historyListEl.innerHTML = `
+          <div class="empty-state" style="padding: 15px 0;">
+            No reviews completed yet. Start review on a topic to see history.
+          </div>
+        `;
+        historyListEl.style.borderLeft = "none";
+        historyListEl.style.paddingLeft = "0";
+      } else {
+        historyListEl.style.borderLeft = "2px solid var(--border-color)";
+        historyListEl.style.paddingLeft = "20px";
+        history.forEach(item => {
+          const found = topicsList.find(t => t.id === item.topicId);
+          const label = found ? found.label : item.topicId;
+
+          const event = document.createElement("div");
+          event.className = "timeline-event";
+
+          const pct = item.scorePct;
+          let color = "var(--completed-color)";
+          if (pct < 50) color = "#ef4444";
+          else if (pct < 80) color = "var(--in-progress-color)";
+
+          event.innerHTML = `
+            <div class="event-time">${item.reviewedAt}</div>
+            <div class="event-content">
+              <div class="event-title">${label}</div>
+              <div class="event-stats">
+                <span>Score: <span class="event-score" style="color: ${color}">${pct}%</span></span>
+                <span>Questions: ${item.answeredCount}</span>
+              </div>
+            </div>
+          `;
+
+          historyListEl.appendChild(event);
+        });
+      }
+    }
+  }
+
+  // ─── DOM Hooks ─────────────────────────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    initDashboard();
+
+    // Check if query parameter `topic` is present (to auto-start quiz)
+    const urlParams = new URLSearchParams(window.location.search);
+    const startTopic = urlParams.get("topic");
+    if (startTopic) {
+      // Clear topic query parameter from address bar history without reloading
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Short delay to let animations complete
+      setTimeout(() => {
+        start(startTopic);
+      }, 300);
+    }
+  });
+
+  // Re-render dashboard whenever a review or skip happens
+  window.addEventListener("review-saved", () => {
+    initDashboard();
+  });
+
   window.ReviewMode = {
     start,
     closeModal,
+    skipTopic,
+    initDashboard
   };
 })();
-
