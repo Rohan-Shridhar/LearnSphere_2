@@ -215,7 +215,7 @@ function initReviewQueueWidget() {
   }
 
   function parseISODateToUTCStart(isoDateYYYYMMDD) {
-    const [y, m, day] = isoDateYYYYMMDD.split("-".map(Number));
+    const [y, m, day] = isoDateYYYYMMDD.split("-").map(Number);
     const dt = new Date(y, m - 1, day, 0, 0, 0, 0);
     return Math.floor(dt.getTime() / 86400000);
   }
@@ -239,10 +239,10 @@ function initReviewQueueWidget() {
   }
 
   if (dueCount > 0) {
-    widget.textContent = `${dueCount} review${dueCount === 1 ? "" : "s"} due today. Open Home to start review.`;
+    widget.innerHTML = `<a href="review.html" style="color: var(--accent-color); text-decoration: none; font-weight: bold;">${dueCount} review${dueCount === 1 ? "" : "s"} due today. Click here to start review.</a>`;
   } else {
     const earliest = nextDates.sort().shift();
-    widget.textContent = earliest ? `Next review available in ${earliest} (open Home).` : "No reviews scheduled yet. Complete topics to start getting review sessions.";
+    widget.innerHTML = earliest ? `Next review available on ${earliest}. <a href="review.html" style="color: var(--accent-color); text-decoration: none; font-weight: bold;">View queue</a>` : `No reviews scheduled yet. Complete topics to start getting review sessions. <a href="review.html" style="color: var(--accent-color); text-decoration: none; font-weight: bold;">View queue</a>`;
   }
 }
 

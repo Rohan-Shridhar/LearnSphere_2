@@ -45,7 +45,7 @@ function _todayLocalISODate() {
 function _parseISODateToUTCStart(isoDateYYYYMMDD) {
   // Treat isoDate as local date; convert to a numeric day token.
   // For streak we only need day-to-day adjacency, so a day token in local time is fine.
-  const [y, m, d] = isoDateYYYYMMDD.split("-".map(Number);
+  const [y, m, d] = isoDateYYYYMMDD.split("-").map(Number);
   const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
   return Math.floor(dt.getTime() / 86400000);
 }
@@ -171,7 +171,16 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
 
 function getStreak() {
   const state = _loadState();
-  return state.streak || { lastPracticeDate: null, currentStreak: 0 };
+  const s = state.streak || { lastPracticeDate: null, currentStreak: 0 };
+  if (s.lastPracticeDate) {
+    const today = _todayLocalISODate();
+    const todayToken = _parseISODateToUTCStart(today);
+    const prevToken = _parseISODateToUTCStart(s.lastPracticeDate);
+    if (todayToken > prevToken + 1) {
+      return { lastPracticeDate: s.lastPracticeDate, currentStreak: 0 };
+    }
+  }
+  return s;
 }
 
 function getTopicStats(topicId) {

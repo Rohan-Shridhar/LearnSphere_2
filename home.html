@@ -144,6 +144,89 @@
             outline: 2px solid var(--accent-color);
             outline-offset: 2px;
         }
+
+        /* ── Course Assignments ─────────────────────────────────────────── */
+        .assignment-card {
+            background: var(--progress-item-bg);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 10px 0;
+            border-left: 4px solid var(--accent-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            transition: var(--theme-transition);
+            text-align: left;
+        }
+        .assignment-card.completed {
+            border-left-color: var(--completed-color);
+        }
+        .assignment-card.overdue {
+            border-left-color: #ef4444;
+        }
+        .assignment-info {
+            flex: 1;
+        }
+        .assignment-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .difficulty-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .difficulty-badge.easy {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .difficulty-badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+        .difficulty-badge.hard {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+        .assignment-status-badge {
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid currentColor;
+            display: inline-block;
+        }
+        .assignment-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .assignment-btn {
+            background: var(--btn-primary-bg);
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--theme-transition);
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+        .assignment-btn:hover {
+            background: var(--btn-primary-hover);
+            transform: scale(1.03);
+        }
     </style>
     <script src="theme.js"></script>
     <link rel="manifest" href="manifest.json">
@@ -162,9 +245,22 @@
             <a href="sub/biology.html" class="button">🧬 Biology</a>
         </div>
 
+        <!-- Course Assignments Section -->
+        <section class="progress-overview" aria-labelledby="assignments-heading">
+            <h2 id="assignments-heading">📝 Course Assignments</h2>
+            <div id="assignmentsList" style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
+                <p style="color: var(--text-muted); text-align: center; margin: 12px 0;">Loading assignments...</p>
+            </div>
+        </section>
+
         <!-- Study Progress Section -->
         <section class="progress-overview" aria-labelledby="progress-heading">
-            <h2 id="progress-heading">📊 Your Study Progress</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                <h2 id="progress-heading" style="margin: 0; font-size: 1.4rem;">📊 Your Study Progress</h2>
+                <button id="preloadOfflineBtn" style="background: var(--btn-secondary-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: var(--theme-transition); display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-download"></i> Preload for offline
+                </button>
+            </div>
 
             <!-- Overall completion bar -->
             <div
@@ -188,6 +284,21 @@
         <!-- Achievements & Badges Section -->
         <section class="progress-overview" aria-labelledby="badges-heading">
             <h2 id="badges-heading">🏅 Achievements & Badges</h2>
+
+            <!-- Streak Progress card -->
+            <div id="streakProgressCard" style="background: var(--progress-item-bg); border-radius: 10px; padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--in-progress-color); text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 1.05rem; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 6px;">
+                        <span>🔥</span> Daily Practice Streak
+                    </span>
+                    <span id="streakDaysText" style="font-size: 1.1rem; font-weight: 800; color: #fff;">0 Days</span>
+                </div>
+                <div class="progress-bar-track" style="margin-top: 12px; height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden;">
+                    <div id="streakProgressBarFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #ff8c00, #ff4500); border-radius: 5px; transition: width 0.5s ease;"></div>
+                </div>
+                <p id="streakNextMilestoneText" style="font-size: 0.8rem; color: var(--text-muted); margin: 8px 0 0 0;"></p>
+            </div>
+
             <div id="badgesContainerHome"></div>
             <div style="font-size:0.85rem; color: var(--text-muted); margin-top:10px;">
                 Unlock milestones based on quiz attempts, practice streak, and accuracy.

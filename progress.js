@@ -97,7 +97,7 @@ function _todayLocalISODate() {
 }
 
 function _parseISODateToUTCStart(isoDateYYYYMMDD) {
-    const [y, m, d] = isoDateYYYYMMDD.split("-".map(Number));
+    const [y, m, d] = isoDateYYYYMMDD.split("-").map(Number);
     const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
     return Math.floor(dt.getTime() / 86400000);
 }
@@ -232,12 +232,7 @@ function renderProgressList() {
         reviewBtn.style.cursor = isDue ? "pointer" : "not-allowed";
 
         reviewBtn.addEventListener("click", () => {
-            // Expects review.js to expose window.ReviewMode.start(topicId)
-            if (window.ReviewMode?.start) {
-                window.ReviewMode.start(topic.id);
-            } else {
-                alert("Review mode is not ready yet.");
-            }
+            window.location.href = `review.html?topic=${topic.id}`;
         });
 
         badge.setAttribute("aria-label", `${topic.label}: ${STATE_LABELS[state]}. Click to change status.`);
