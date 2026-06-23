@@ -36,25 +36,33 @@
   const REVIEW_SCHEDULE_KEY = "learnsphere_review_schedule_v1";
   const REVIEW_HISTORY_KEY = "learnsphere_review_history_v1";
 
-  // Fallback TOPICS list in case progress.js is not loaded
-  const TOPICS_FALLBACK = [
-    { id: "physics-motion",       label: "Physics: Motion",                   subject: "physics"   },
-    { id: "physics-nlm",          label: "Physics: Newton's Laws of Motion",  subject: "physics"   },
-    { id: "physics-projectile",   label: "Physics: Projectile Motion",        subject: "physics"   },
-    { id: "physics-ray",          label: "Physics: Ray Optics",               subject: "physics"   },
-    { id: "maths-calculus",       label: "Maths: Calculus",                   subject: "maths"     },
-    { id: "maths-vectors",        label: "Maths: Vectors & 3D Geometry",      subject: "maths"     },
-    { id: "maths-probability",    label: "Maths: Probability & Statistics",   subject: "maths"     },
-    { id: "maths-geometry",       label: "Maths: Coordinate Geometry",        subject: "maths"     },
-    { id: "chemistry-atomic",     label: "Chemistry: Atomic Structure",       subject: "chemistry" },
-    { id: "chemistry-bonding",    label: "Chemistry: Chemical Bonding",       subject: "chemistry" },
-    { id: "chemistry-equil",      label: "Chemistry: Equilibrium",            subject: "chemistry" },
-    { id: "chemistry-thermo",     label: "Chemistry: Thermodynamics",         subject: "chemistry" },
-  ];
+  // NOTE:
+  // review.js must stay in sync with the app's authoritative topic registry
+  // (TOPICS in progress.js). If progress.js hasn't loaded yet, we must NOT
+  // fall back to an alternate metadata set because it can diverge.
 
   function getTopicsList() {
-    return (typeof TOPICS !== "undefined" && Array.isArray(TOPICS)) ? TOPICS : TOPICS_FALLBACK;
+    if (typeof TOPICS === "undefined") return null;
+    if (!Array.isArray(TOPICS)) return null;
+    // Basic shape check
+    const ok = TOPICS.every(t => t && typeof t.id === "string" && typeof t.label === "string" && typeof t.subject === "string");
+    return ok ? TOPICS : null;
   }
+
+  async function waitForTopicsList({ timeoutMs = 3000, pollIntervalMs = 50 } = {}) {
+    const start = Date.now();
+    return new Promise(resolve => {
+      function tick() {
+        const topics = getTopicsList();
+        if (topics) return resolve(topics);
+        if (Date.now() - start >= timeoutMs) return resolve(null);
+        setTimeout(tick, pollIntervalMs);
+      }
+      tick();
+    });
+  }
+
+
 
   function loadSchedule() {
     try {
@@ -690,7 +698,17 @@
   }
 
   // ─── DOM Hooks ─────────────────────────────────────────────────────────────
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
+    // Ensure we have the authoritative TOPICS registry from progress.js.
+    // This prevents label/subject divergence when script load order fails.
+    const topicsList = await waitForTopicsList();
+
+    if (!topicsList) {
+      // Render nothing rather than risking divergent metadata.
+      // (Buttons also require TOPICS to label/subject correctly.)
+      return;
+    }
+
     initDashboard();
 
     // Check if query parameter `topic` is present (to auto-start quiz)
@@ -700,13 +718,14 @@
       // Clear topic query parameter from address bar history without reloading
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      
+
       // Short delay to let animations complete
       setTimeout(() => {
         start(startTopic);
       }, 300);
     }
   });
+
 
   // Re-render dashboard whenever a review or skip happens
   window.addEventListener("review-saved", () => {
