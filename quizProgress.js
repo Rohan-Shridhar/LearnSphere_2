@@ -93,9 +93,34 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
 
   const total = Number(totalQuestions) || 0;
   const got = Number(score) || 0;
-  const correct = typeof correctCount === "number" ? correctCount : got;
+
+  // Determine correctness count used for accuracy analytics.
+  // Priority:
+  // 1) If caller provides correctCount as a number -> trust it.
+  // 2) Else, try to infer correct answers from score only when it looks like an accuracy metric:
+  //    - score is ratio: 0..1
+  //    - score is percent: 0..100
+  //    In those cases, correct = round(score * total).
+  // 3) Otherwise, we cannot infer correct answers safely -> set null.
+  //    (Prevents corrupting accuracy trend charts when score is points/marks.)
+  let correct = null;
+  if (typeof correctCount === "number" && Number.isFinite(correctCount)) {
+    correct = correctCount;
+  } else {
+    // Some quiz pages historically pass a percentage/ratio as `score` and omit `correctCount`.
+
+    const looksLikeRatio = got >= 0 && got <= 1;
+    const looksLikePercent = got > 1 && got <= 100;
+    if (total > 0 && (looksLikeRatio || looksLikePercent)) {
+      const ratio = looksLikeRatio ? got : got / 100;
+      correct = Math.round(ratio * total);
+    }
+  }
+
+
 
   const timeMs = typeof timeTakenMs === "number" && timeTakenMs >= 0 ? timeTakenMs : null;
+
 
   // Topic aggregate init
   if (!state.byTopic[topicId]) {
@@ -115,7 +140,10 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
   agg.attempts += 1;
   agg.bestScore = agg.bestScore === null ? got : Math.max(agg.bestScore, got);
   agg.latestScore = got;
-  agg.correctTotal += correct;
+  if (typeof correct === "number" && Number.isFinite(correct)) {
+    agg.correctTotal += correct;
+  }
+
   agg.questionsTotal += total;
   agg.lastAttemptAt = now;
   if (timeMs !== null) {
@@ -130,7 +158,8 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
     score: got,
     totalQuestions: total,
     correctCount: correct,
-    accuracy: total > 0 ? correct / total : null,
+    accuracy: total > 0 && typeof correct === "number" && Number.isFinite(correct) ? correct / total : null,
+
     timeTakenMs: timeMs,
     startedAt: null,
     finishedAt: now,
@@ -219,16 +248,40 @@ function getAccuracySeries({ days = 14 } = {}) {
   const byToken = new Map();
   tokens.forEach(t => byToken.set(t, { correct: 0, total: 0 }));
 
+  function toFiniteNumber(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
   attempts.forEach(a => {
     if (!a.practiceDate) return;
     const token = _parseISODateToUTCStart(a.practiceDate);
     if (!byToken.has(token)) return;
-    if (typeof a.correctCount === "number" && typeof a.totalQuestions === "number") {
+
+    const total = toFiniteNumber(a.totalQuestions);
+    if (total === null || total <= 0) return;
+
+    // Priority 1: correctCount
+    const correctFromCount = toFiniteNumber(a.correctCount);
+    if (correctFromCount !== null) {
       const bucket = byToken.get(token);
-      bucket.correct += a.correctCount;
-      bucket.total += a.totalQuestions;
+      bucket.correct += correctFromCount;
+      bucket.total += total;
       byToken.set(token, bucket);
+      return;
     }
+
+    // Priority 2: attempt-level accuracy (already computed in recordAttempt)
+    const acc = toFiniteNumber(a.accuracy);
+    if (acc !== null) {
+      const bucket = byToken.get(token);
+      bucket.correct += acc * total;
+      bucket.total += total;
+      byToken.set(token, bucket);
+      return;
+    }
+
+    // Otherwise we cannot safely infer correctness for chart aggregation.
   });
 
   const accuracyByDay = tokens.map(t => {
@@ -245,12 +298,31 @@ function getOverallAccuracy() {
   const attempts = state.attempts || [];
   let correct = 0;
   let total = 0;
+
+  function toFiniteNumber(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
   for (const a of attempts) {
-    if (typeof a.correctCount === "number" && typeof a.totalQuestions === "number") {
-      correct += a.correctCount;
-      total += a.totalQuestions;
+    const totalQ = toFiniteNumber(a.totalQuestions);
+    if (totalQ === null || totalQ <= 0) continue;
+
+    const correctFromCount = toFiniteNumber(a.correctCount);
+    if (correctFromCount !== null) {
+      correct += correctFromCount;
+      total += totalQ;
+      continue;
+    }
+
+    // Fallback: use attempt-level accuracy if present.
+    const acc = toFiniteNumber(a.accuracy);
+    if (acc !== null) {
+      correct += acc * totalQ;
+      total += totalQ;
     }
   }
+
   if (total <= 0) return { accuracy: null, correct, total };
   return { accuracy: correct / total, correct, total };
 }
