@@ -673,6 +673,41 @@ window.quizProgress = {
   getMasteryStats,
   getWeakestSkills,
   getQuestionWeaknessWeight,
+  recordRetryAttempt,
 };
+
+
+/**
+ * Records a retry attempt (from "Retry Missed Questions") into mastery stats.
+ * Stores retryAttempts and retryCorrect separately to avoid inflating first-attempt accuracy.
+ *
+ * @param {Object} params
+ * @param {string} params.topicId
+ * @param {Array}  params.results  - Array of { q, correct } objects from the retry session
+ */
+function recordRetryAttempt({ topicId, results }) {
+  if (!topicId || !Array.isArray(results) || results.length === 0) return;
+
+  const state = _loadState();
+  const now = Date.now();
+
+  results.forEach(({ q, correct }) => {
+    const qText = typeof q === "string" ? q.trim() : "";
+    const taxonomyMatch = SKILL_TAXONOMY[qText];
+    const sId = taxonomyMatch ? taxonomyMatch.skillId : (topicId + "-general");
+
+    if (!state.mastery[sId]) {
+      state.mastery[sId] = { attempts: 0, correct: 0, lastAttemptAt: 0, weaknessAttempts: 0, weaknessCorrect: 0, retryAttempts: 0, retryCorrect: 0 };
+    }
+    state.mastery[sId].retryAttempts = (state.mastery[sId].retryAttempts || 0) + 1;
+    if (correct) {
+      state.mastery[sId].retryCorrect = (state.mastery[sId].retryCorrect || 0) + 1;
+    }
+    state.mastery[sId].lastAttemptAt = now;
+  });
+
+  _saveState(state);
+}
+
 
 
