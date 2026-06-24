@@ -115,18 +115,44 @@
   }
 
   function renderKpis(root) {
-    const streak = window.quizProgress?.getStreak?.();
-    const overall = window.quizProgress?.getOverallAccuracy?.();
+    let currentStreak = 0;
+    let streakMetaText = "No practice yet.";
+    let dailyGoalPct = 0;
+    let dailyGoalMetaText = "Complete 1 quiz or review 10 questions.";
+
+    if (window.studyProgress && typeof window.studyProgress.loadStreakState === "function") {
+      const streakState = window.studyProgress.loadStreakState();
+      currentStreak = streakState.currentStreak || 0;
+      const last = streakState.lastActiveDate;
+      streakMetaText = last ? `Last active: ${last}` : "No activity yet.";
+
+      const qDone = streakState.dailyGoalProgress.quizzesCompleted || 0;
+      const rDone = streakState.dailyGoalProgress.questionsReviewed || 0;
+      const quizGoalProgress = qDone / 1;
+      const reviewGoalProgress = rDone / 10;
+      dailyGoalPct = Math.min(100, Math.round(Math.max(quizGoalProgress, reviewGoalProgress) * 100));
+      dailyGoalMetaText = dailyGoalPct >= 100 
+        ? `🎉 Goal Achieved! (${qDone}/1 quiz, ${rDone}/10 reviewed)` 
+        : `${qDone}/1 quiz, ${rDone}/10 reviewed today`;
+    } else {
+      const streak = window.quizProgress?.getStreak?.();
+      currentStreak = streak?.currentStreak || 0;
+      const last = streak?.lastPracticeDate;
+      streakMetaText = last ? `Last practice: ${last}` : "No practice yet.";
+    }
 
     const streakValue = root.querySelector("#streakValue");
     const streakMeta = root.querySelector("#streakMeta");
 
-    if (streakValue) streakValue.textContent = String(streak?.currentStreak || 0);
-    if (streakMeta) {
-      const last = streak?.lastPracticeDate;
-      streakMeta.textContent = last ? `Last practice: ${last}` : "No practice yet.";
-    }
+    if (streakValue) streakValue.textContent = String(currentStreak);
+    if (streakMeta) streakMeta.textContent = streakMetaText;
 
+    const dailyGoalValue = root.querySelector("#dailyGoalValue");
+    const dailyGoalMeta = root.querySelector("#dailyGoalMeta");
+    if (dailyGoalValue) dailyGoalValue.textContent = `${dailyGoalPct}%`;
+    if (dailyGoalMeta) dailyGoalMeta.textContent = dailyGoalMetaText;
+
+    const overall = window.quizProgress?.getOverallAccuracy?.();
     const overallAccuracyValue = root.querySelector("#overallAccuracyValue");
     const overallAccuracyMeta = root.querySelector("#overallAccuracyMeta");
 

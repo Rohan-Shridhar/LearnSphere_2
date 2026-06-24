@@ -364,8 +364,12 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
   state.streak = s;
   _saveState(state);
 
+  // Update unified streak & daily goal state
+  _updateUnifiedStreakAndGoal("quiz", 1);
+
   return state;
 }
+
 
 function getStreak() {
   const state = _loadState();
@@ -588,6 +592,74 @@ function getQuestionWeaknessWeight(q) {
   return 1.0 - accuracy;
 }
 
+function _updateUnifiedStreakAndGoal(type, value = 1) {
+  if (window.studyProgress && typeof window.studyProgress.recordActivity === "function") {
+    window.studyProgress.recordActivity(type, value);
+    return;
+  }
+
+  const STREAK_KEY = "learnsphere_streak_state_v1";
+  const today = _todayLocalISODate();
+  let state = { lastActiveDate: null, currentStreak: 0, dailyGoalProgress: { quizzesCompleted: 0, questionsReviewed: 0 } };
+
+  try {
+    const raw = localStorage.getItem(STREAK_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        state = parsed;
+      }
+    }
+  } catch (e) {}
+
+  if (!state.dailyGoalProgress || typeof state.dailyGoalProgress !== "object") {
+    state.dailyGoalProgress = { quizzesCompleted: 0, questionsReviewed: 0 };
+  }
+
+  const lastActive = state.lastActiveDate;
+  const todayToken = _parseISODateToUTCStart(today);
+  const lastToken = lastActive ? _parseISODateToUTCStart(lastActive) : null;
+
+  if (lastActive) {
+    if (todayToken > lastToken + 1) {
+      state.currentStreak = 0;
+      state.dailyGoalProgress = { quizzesCompleted: 0, questionsReviewed: 0 };
+    } else if (lastActive !== today) {
+      state.dailyGoalProgress = { quizzesCompleted: 0, questionsReviewed: 0 };
+    }
+  } else {
+    state.dailyGoalProgress = { quizzesCompleted: 0, questionsReviewed: 0 };
+  }
+
+  if (!lastActive) {
+    state.currentStreak = 1;
+    state.lastActiveDate = today;
+  } else if (lastActive === today) {
+    // Same day
+  } else if (lastToken !== null && todayToken === lastToken + 1) {
+    state.currentStreak += 1;
+    state.lastActiveDate = today;
+  } else {
+    state.currentStreak = 1;
+    state.lastActiveDate = today;
+  }
+
+  if (type === "quiz") {
+    state.dailyGoalProgress.quizzesCompleted += value;
+  } else if (type === "review") {
+    state.dailyGoalProgress.questionsReviewed += value;
+  }
+
+  try {
+    localStorage.setItem(STREAK_KEY, JSON.stringify(state));
+  } catch (e) {}
+
+  // Trigger achievements check if achievements is loaded
+  if (window.achievements && typeof window.achievements.checkAndNotify === "function") {
+    window.achievements.checkAndNotify();
+  }
+}
+
 window.quizProgress = {
   QUIZ_TOPICS,
   SKILL_TAXONOMY,
@@ -602,4 +674,5 @@ window.quizProgress = {
   getWeakestSkills,
   getQuestionWeaknessWeight,
 };
+
 
