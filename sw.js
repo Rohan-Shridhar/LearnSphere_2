@@ -4,7 +4,7 @@
  */
 
 // Increment this value to invalidate older caches
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_NAME = `learnsphere-static-${CACHE_VERSION}`;
 
 // For runtime image caching
@@ -42,6 +42,7 @@ const APP_SHELL_URLS = [
   "/chemistryquiz/equilibriumquiz.js",
   "/chemistryquiz/thermoquiz.js",
   "/quizAssignmentHelper.js",
+  "/offlineSync.js",
 
   // Quizzes styles
   "/quiz/motionquiz.css",
@@ -84,6 +85,14 @@ const APP_SHELL_URLS = [
   "/progress.js",
   "/review.js",
   "/quizProgress.js",
+  "/badges.js",
+  "/badges.css",
+  "/exportProgress.js",
+  "/dashboardProgress.js",
+
+  // Data
+  "/quiz/bank/physics-motion.json",
+  "/manifest.json",
 
   // Images
   "/student.png",
@@ -120,9 +129,10 @@ self.addEventListener("activate", (event) => {
     (async () => {
       // Remove old caches
       const keys = await caches.keys();
+      const keepCaches = new Set([CACHE_NAME, RUNTIME_IMAGE_CACHE_NAME]);
       await Promise.all(
         keys.map((k) => {
-          if (k !== CACHE_NAME) return caches.delete(k);
+          if (!keepCaches.has(k)) return caches.delete(k);
         })
       );
       self.clients.claim();
@@ -310,7 +320,13 @@ self.addEventListener("message", (event) => {
           "/sub/maths.html",
           "/sub/physics.html",
           "/sub/chemistry.html",
-          "/sub/biology.html"
+          "/sub/biology.html",
+
+          // Quiz data
+          "/quiz/bank/physics-motion.json",
+
+          // Offline sync module
+          "/offlineSync.js"
         ];
 
         try {
@@ -329,6 +345,31 @@ self.addEventListener("message", (event) => {
           });
         }
       })()
+    );
+  }
+
+  // Handle manual sync flush request from clients
+  if (event.data && event.data.action === "flush-offline-queue") {
+    // Notify all clients to flush their offline queues
+    event.waitUntil(
+      self.clients.matchAll().then((clientsList) => {
+        clientsList.forEach((client) => {
+          client.postMessage({ action: "do-flush-offline-queue" });
+        });
+      })
+    );
+  }
+});
+
+// Background Sync: flush offline queue when connectivity returns
+self.addEventListener("sync", (event) => {
+  if (event.tag === "learnsphere-sync-progress") {
+    event.waitUntil(
+      self.clients.matchAll().then((clientsList) => {
+        clientsList.forEach((client) => {
+          client.postMessage({ action: "do-flush-offline-queue" });
+        });
+      })
     );
   }
 });
