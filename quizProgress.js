@@ -367,6 +367,22 @@ function recordAttempt({ topicId, score, totalQuestions, correctCount, timeTaken
   // Update unified streak & daily goal state
   _updateUnifiedStreakAndGoal("quiz", 1);
 
+  // Queue for future backend sync when offline
+  if (window.offlineSync && typeof window.offlineSync.queueProgressUpdate === "function") {
+    if (!window.offlineSync.isOnline()) {
+      window.offlineSync.queueProgressUpdate("quiz_attempt", {
+        topicId,
+        score: got,
+        totalQuestions: total,
+        correctCount: correct,
+        timeTakenMs: timeMs,
+        quizId,
+        finishedAt: now,
+        practiceDate: today,
+      });
+    }
+  }
+
   return state;
 }
 
@@ -682,6 +698,8 @@ window.quizProgress = {
   getQuestionWeaknessWeight,
   recordRetryAttempt,
   getAttemptsHistory,
+  /** @returns {Object|null} offlineSync reference */
+  get offlineSync() { return window.offlineSync || null; },
 };
 
 
@@ -715,7 +733,23 @@ function recordRetryAttempt({ topicId, results }) {
   });
 
   _saveState(state);
+
+  // Queue for future backend sync when offline
+  if (window.offlineSync && typeof window.offlineSync.queueProgressUpdate === "function") {
+    if (!window.offlineSync.isOnline()) {
+      window.offlineSync.queueProgressUpdate("retry_attempt", { topicId, results });
+    }
+  }
 }
 
-
+// Listen for Background Sync flush messages from service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.action === "do-flush-offline-queue") {
+      if (window.offlineSync && typeof window.offlineSync.flushQueue === "function") {
+        window.offlineSync.flushQueue();
+      }
+    }
+  });
+}
 
